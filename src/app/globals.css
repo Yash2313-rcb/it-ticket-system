@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 20% 98%;
+  --foreground: 215 28% 14%;
+  --card: 0 0% 100%;
+  --muted: 214 24% 94%;
+  --muted-foreground: 215 14% 42%;
+  --border: 214 20% 87%;
+  --primary: 199 80% 32%;
+  --primary-foreground: 0 0% 100%;
+  --destructive: 0 68% 46%;
+  --success: 152 60% 30%;
+  --warning: 32 90% 40%;
+  --ring: 199 80% 38%;
+  --sidebar: 215 32% 13%;
+  --sidebar-foreground: 214 20% 88%;
+  --sidebar-muted: 215 15% 58%;
+  --sidebar-active: 215 30% 22%;
+}
+
+.dark {
+  --background: 215 30% 8%;
+  --foreground: 214 20% 92%;
+  --card: 215 28% 11%;
+  --muted: 215 22% 17%;
+  --muted-foreground: 214 14% 62%;
+  --border: 215 20% 22%;
+  --primary: 197 75% 52%;
+  --primary-foreground: 215 40% 8%;
+  --destructive: 0 70% 58%;
+  --success: 152 55% 50%;
+  --warning: 36 90% 58%;
+  --ring: 197 75% 52%;
+  --sidebar: 215 32% 7%;
+  --sidebar-foreground: 214 20% 85%;
+  --sidebar-muted: 215 12% 52%;
+  --sidebar-active: 215 28% 16%;
+}
+
+* { border-color: hsl(var(--border)); }
+body { background: hsl(var(--background)); color: hsl(var(--foreground)); font-family: var(--font-sans), system-ui, sans-serif; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .app-root, .print-main { display: block !important; height: auto !important; overflow: visible !important; }
+  .print-main { padding: 0 !important; }
+  .print-break { break-inside: avoid; }
+}

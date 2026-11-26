@@ -1,0 +1,15 @@
+# Supabase project (Project Settings > API)
+NEXT_PUBLIC_SUPABASE_URL=https://qcffciynzkyqlwcvjtfx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZmZjaXluemt5cWx3Y3ZqdGZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MTEwMDksImV4cCI6MjExMTA4NzAwOX0.7uCcYqMRb59EREaNgGaaFyyw73-5fJrtW8ZouGZVHeA
+
+# SERVER ONLY. Never expose to the browser. Used to create users from the User Management page.
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFjZmZjaXluemt5cWx3Y3ZqdGZ4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5NTUxMTAwOSwiZXhwIjoyMTExMDg3MDA5fQ.Qfu6f5n1t0i_ItLzj957s1wyjV_T_ELqWkuTVUqt5oc
+
+# Shown in the UI and later on reports
+NEXT_PUBLIC_APP_NAME="IT Operations Platform"
+
+# Public address of the deployed app (used inside asset QR codes), no trailing slash
+NEXT_PUBLIC_SITE_URL=https://it-ops-platform-fixed.vercel.app/
+
+# Optional: protects the daily alerts job at /api/cron/alerts
+CRON_SECRET=generate-a-long-random-string
