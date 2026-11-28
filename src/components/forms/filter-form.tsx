@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 
 /** A GET filter form that applies itself: dropdowns submit immediately, the search box after you stop typing. */
-export function FilterForm({ children, className, hidden, ...rest }: { children: React.ReactNode; className?: string; hidden?: Record<string, string | undefined> } & React.FormHTMLAttributes<HTMLFormElement>) {
+export function FilterForm({ children, className, hidden, ...rest }: { children: React.ReactNode; className?: string; hidden?: Record<string, string | undefined> } & Omit<React.FormHTMLAttributes<HTMLFormElement>, 'hidden'>) {
   const ref = useRef<HTMLFormElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const submit = () => ref.current?.requestSubmit();
@@ -13,11 +13,11 @@ export function FilterForm({ children, className, hidden, ...rest }: { children:
       className={className}
       {...rest}
       onChange={(e) => {
-        const el = e.target as HTMLInputElement;
+        const el = e.target as unknown as HTMLInputElement;
         if (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date' || el.type === 'month') submit();
       }}
       onInput={(e) => {
-        const el = e.target as HTMLInputElement;
+        const el = e.target as unknown as HTMLInputElement;
         if (el.tagName === 'INPUT' && (el.type === 'text' || el.type === 'search')) {
           clearTimeout(timer.current);
           timer.current = setTimeout(submit, 500);
