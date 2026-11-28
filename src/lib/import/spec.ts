@@ -1,6 +1,8 @@
 import { MODULES } from '@/lib/modules/registry';
 import type { FieldType } from '@/lib/modules/types';
 import type { Role } from '@/lib/permissions';
+import type { ImportAdapter } from './adapter';
+import { legacyAssetsAdapter } from './legacy-assets';
 
 export type ImportField = {
   name: string;
@@ -28,6 +30,8 @@ export type ImportSpec = {
   validate?: (v: Record<string, any>) => string | null;
   /** Tidy values just before saving. */
   finish?: (v: Record<string, any>) => void;
+  /** Accepts an existing spreadsheet layout in addition to the standard template. */
+  adapter?: ImportAdapter;
 };
 
 const ADMINS: Role[] = ['super_admin', 'it_admin'];
@@ -66,7 +70,7 @@ export function getImportSpec(key: string): ImportSpec | null {
   if (CUSTOM[key]) return CUSTOM[key];
   const cfg = MODULES[key];
   if (!cfg || cfg.importable === false) return null;
-  return {
+  const spec: ImportSpec = {
     key: cfg.key, title: cfg.title, singular: cfg.singular, table: cfg.table,
     roles: cfg.createRoles ?? cfg.writeRoles, codeField: cfg.codeField, stampCreator: cfg.stampCreator,
     fields: cfg.fields
@@ -75,6 +79,24 @@ export function getImportSpec(key: string): ImportSpec | null {
         name: f.name, label: f.label, type: f.type, required: f.required, options: f.options, ref: f.ref,
         default: f.default, min: f.min, roles: f.roles, hint: f.hint,
       })),
+  };
+  return cfg.key === 'assets' ? withAssetExtras(spec) : spec;
+}
+
+/**
+ * The asset import also accepts an Asset ID (blank = generated) and a Status, and can read the
+ * company's existing "IT All Assets" register layout directly.
+ */
+function withAssetExtras(base: ImportSpec): ImportSpec {
+  const importable: [string, string][] = [['available', 'Available'], ['under_maintenance', 'Under maintenance'], ['damaged', 'Damaged'], ['lost', 'Lost'], ['retired', 'Retired']];
+  return {
+    ...base,
+    fields: [
+      { name: 'asset_code', label: 'Asset ID', type: 'text', hint: 'Leave blank to generate AST-000001 style IDs. Must be unique.' },
+      ...base.fields,
+      { name: 'status', label: 'Status', type: 'select', options: importable, default: 'available', hint: 'Assigned and Disposed are set from the asset page (Assign / Dispose).' },
+    ],
+    adapter: legacyAssetsAdapter,
   };
 }
 

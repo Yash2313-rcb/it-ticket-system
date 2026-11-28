@@ -47,6 +47,8 @@ export function ImportDialog({ importKey, title }: { importKey: string; title: s
             <li>If the summary looks right, press <b className="text-foreground">Import</b>. Rows with problems are skipped and listed.</li>
           </ol>
 
+          {importKey === 'assets' && <p className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">Your existing IT assets register (Sr no, Asset ID, Name of Item, Item Description, Item Serial Number, Location, User, Received Date ...) can be uploaded as it is. The columns are matched automatically and a summary is shown after Check file.</p>}
+
           <div className="flex flex-wrap gap-2">
             <a href={`/data/template?key=${importKey}&format=xlsx`} className={buttonClass('outline', 'sm')}><Download className="h-4 w-4" /> Excel template</a>
             <a href={`/data/template?key=${importKey}&format=csv`} className={buttonClass('outline', 'sm')}><Download className="h-4 w-4" /> CSV template</a>
@@ -70,6 +72,11 @@ export function ImportDialog({ importKey, title }: { importKey: string; title: s
               </p>
               {result.matched && result.matched.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Columns used: {result.matched.join(', ')}.</p>}
               {result.ignored && result.ignored.length > 0 && <p className="mt-1 text-xs text-muted-foreground">Columns ignored (not recognised): {result.ignored.join(', ')}.</p>}
+              {!!result.notes?.length && (
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-muted-foreground">
+                  {result.notes.map((t, i) => <li key={i}>{t}</li>)}
+                </ul>
+              )}
             </div>
           )}
           {!!result?.errors?.length && (
