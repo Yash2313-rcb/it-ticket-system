@@ -57,7 +57,7 @@ export async function readSheet(file: File): Promise<SheetData | { error: string
   return { headers: kept[0].cells.map((h) => String(h ?? '').trim()), rows: kept.slice(1).map((k) => k.cells), rowNos: kept.slice(1).map((k) => k.no) };
 }
 
-type Coerced = { value?: any; skip?: true; error?: string };
+type Coerced = { value?: any; skip?: true; error?: string; warn?: string };
 
 function coerce(f: ImportField, raw: unknown, refs: Map<string, Map<string, string>>): Coerced {
   if (isBlank(raw)) {
@@ -91,6 +91,7 @@ function coerce(f: ImportField, raw: unknown, refs: Map<string, Map<string, stri
       if (f.ref) {
         if (z.string().uuid().safeParse(text).success) return { value: text };
         const id = text.split('||').map((t) => refs.get(f.name)?.get(norm(t))).find(Boolean); // "A||B" = try A, then B
+        if (!id && f.lenient) return { value: null, warn: text };
         return id ? { value: id } : { error: `${f.label} "${text}" was not found. Use a name exactly as it appears in the app.` };
       }
       const hit = (f.options ?? []).find(([val, label]) => norm(val) === norm(text) || norm(label) === norm(text));
@@ -148,6 +149,7 @@ export async function runImport(spec: ImportSpec, me: { id: string; role: Role }
     refs.set(f.name, m);
   }));
 
+  const unmatched = new Map<string, number>(); // lenient references that were not found, with how many rows
   const good: { row: number; values: Record<string, any> }[] = [];
   const errors: { row: number; message: string }[] = [];
   sheet.rows.forEach((cells, i) => {
@@ -158,6 +160,7 @@ export async function runImport(spec: ImportSpec, me: { id: string; role: Role }
       const col = colFor.get(f.name);
       // A column that is not in the file at all falls back to the field default (or is skipped).
       const c = coerce(f, col === undefined ? '' : cells[col], refs);
+      if (c.warn) unmatched.set(c.warn, (unmatched.get(c.warn) ?? 0) + 1);
       if (c.error) problems.push(c.error);
       else if (!c.skip) values[f.name] = c.value;
     }
@@ -166,6 +169,11 @@ export async function runImport(spec: ImportSpec, me: { id: string; role: Role }
     else good.push({ row: rowNo, values });
   });
 
+  if (unmatched.size) {
+    const names = [...unmatched.keys()];
+    const rowsAffected = [...unmatched.values()].reduce((a, b) => a + b, 0);
+    notes = [...notes, `${rowsAffected} ${rowsAffected === 1 ? 'row names' : 'rows name'} someone who is not an employee in the app yet (${names.slice(0, 12).join(', ')}${names.length > 12 ? ', ...' : ''}). Those assets will be saved without an assignee. To assign them, import the employees first and then check this file again.`];
+  }
   const base: ImportResult = { mode, total: sheet.rows.length, valid: good.length, matched, ignored, notes };
   const shown = (list: { row: number; message: string }[]) => ({ errors: list.slice(0, MAX_SHOWN_ERRORS), moreErrors: Math.max(0, list.length - MAX_SHOWN_ERRORS) });
 
@@ -182,17 +190,31 @@ export async function runImport(spec: ImportSpec, me: { id: string; role: Role }
     return { row: g.row, v };
   });
   let imported = 0;
+  let handled = 0;
   const failed: { row: number; message: string }[] = [];
+  const strip = (v: Record<string, any>) => { const o = { ...v }; (spec.virtual ?? []).forEach((k) => delete o[k]); return o; };
+  const save = (list: typeof prepared) => {
+    const q = supabase.from(spec.table).insert(list.map((b) => strip(b.v)));
+    return spec.afterInsert ? q.select('id') : q;
+  };
+  const finishBatch = async (list: typeof prepared, data: any[] | null) => {
+    imported += list.length;
+    if (spec.afterInsert && data) {
+      const r = await spec.afterInsert(list.map((b, i) => ({ row: b.row, values: b.v, id: data[i]?.id })).filter((x) => x.id), supabase);
+      failed.push(...r.errors); handled += r.done;
+    }
+  };
   for (let i = 0; i < prepared.length; i += 100) {
     const batch = prepared.slice(i, i + 100);
-    const { error } = await supabase.from(spec.table).insert(batch.map((b) => b.v));
-    if (!error) { imported += batch.length; continue; }
+    const { error, data } = await save(batch);
+    if (!error) { await finishBatch(batch, data); continue; }
     for (const b of batch) {
-      const { error: e } = await supabase.from(spec.table).insert(b.v);
+      const { error: e, data: d } = await save([b]);
       if (e) failed.push({ row: b.row, message: friendlyDbError(e.message) });
-      else imported += 1;
+      else await finishBatch([b], d);
     }
   }
+  if (handled) notes = [...notes, `${handled} ${handled === 1 ? 'asset was' : 'assets were'} assigned to employees.`];
   const all = [...errors, ...failed].sort((a, b) => a.row - b.row);
-  return { ...base, ok: imported > 0, imported, error: imported === 0 ? 'Nothing was imported.' : undefined, ...shown(all) };
+  return { ...base, notes, ok: imported > 0, imported, error: imported === 0 ? 'Nothing was imported.' : undefined, ...shown(all) };
 }

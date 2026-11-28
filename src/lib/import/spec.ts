@@ -15,6 +15,8 @@ export type ImportField = {
   min?: number;
   roles?: Role[];
   hint?: string;
+  /** When the value is not found in the app, save the row with this field empty instead of rejecting it. */
+  lenient?: boolean;
 };
 
 export type ImportSpec = {
@@ -32,6 +34,10 @@ export type ImportSpec = {
   finish?: (v: Record<string, any>) => void;
   /** Accepts an existing spreadsheet layout in addition to the standard template. */
   adapter?: ImportAdapter;
+  /** Columns that are read from the file but are not columns of the table (removed before saving). */
+  virtual?: string[];
+  /** Runs after rows are saved, with the new row ids. Returns rows it could not finish and how many it handled. */
+  afterInsert?: (items: { row: number; values: Record<string, any>; id: string }[], supabase: any) => Promise<{ errors: { row: number; message: string }[]; done: number }>;
 };
 
 const ADMINS: Role[] = ['super_admin', 'it_admin'];
@@ -42,7 +48,7 @@ const CUSTOM: Record<string, ImportSpec> = {
     fields: [
       { name: 'emp_code', label: 'Employee ID', type: 'text', hint: 'Leave blank to generate EMP-0001 style IDs.' },
       { name: 'full_name', label: 'Full name', type: 'text', required: true },
-      { name: 'department_id', label: 'Department', type: 'select', required: true, ref: { table: 'departments', label: 'name', where: ['is_active', 'true'] }, hint: 'Use the exact department name.' },
+      { name: 'department_id', label: 'Department', type: 'select', required: true, ref: { table: 'departments', label: 'name,code', where: ['is_active', 'true'] }, hint: 'Use the department name or its code.' },
       { name: 'designation', label: 'Designation', type: 'text' },
       { name: 'email', label: 'Email', type: 'email' },
       { name: 'phone', label: 'Contact number', type: 'text' },
@@ -94,9 +100,25 @@ function withAssetExtras(base: ImportSpec): ImportSpec {
     fields: [
       { name: 'asset_code', label: 'Asset ID', type: 'text', hint: 'Leave blank to generate AST-000001 style IDs. Must be unique.' },
       ...base.fields,
-      { name: 'status', label: 'Status', type: 'select', options: importable, default: 'available', hint: 'Assigned and Disposed are set from the asset page (Assign / Dispose).' },
+      { name: 'status', label: 'Status', type: 'select', options: importable, default: 'available', hint: 'Use "Assigned to" to assign an asset. Disposed is set from the asset page.' },
+      { name: 'assign_to', label: 'Assigned to', type: 'select', lenient: true, ref: { table: 'employees', label: 'full_name', where: ['status', 'active'] }, hint: 'Employee full name. The asset is assigned to them (import employees first).' },
     ],
     adapter: legacyAssetsAdapter,
+    virtual: ['assign_to'],
+    // Uses the same database function as the Assign button, so assignment history and status stay correct.
+    afterInsert: async (items, supabase) => {
+      const todo = items.filter((it) => it.values.assign_to && (!it.values.status || it.values.status === 'available'));
+      const errors: { row: number; message: string }[] = [];
+      let done = 0;
+      for (let i = 0; i < todo.length; i += 10) {
+        await Promise.all(todo.slice(i, i + 10).map(async (it) => {
+          const { error } = await supabase.rpc('asset_assign', { p_asset: it.id, p_employee: it.values.assign_to, p_notes: 'Assigned from IT assets register import' });
+          if (error) errors.push({ row: it.row, message: `Saved, but could not be assigned: ${error.message.replace(/^.*?ERROR:\s*/, '')}` });
+          else done += 1;
+        }));
+      }
+      return { errors, done };
+    },
   };
 }
 

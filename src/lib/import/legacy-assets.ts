@@ -13,13 +13,28 @@ const OTHER = 'Other IT Equipment';
 const PLACEHOLDER = /^(?:[-.]+|n[\\\/]?a|nil|none|null|not available)$/i; // "-", "N/A", "N\A", "nil" ...
 
 /** Standard columns the rest of the importer understands (must match the asset import field labels). */
-const OUT = ['Asset ID', 'Asset name', 'Category', 'Serial number', 'Invoice number', 'Purchase date', 'Purchase price (INR)', 'Location', 'Condition', 'Status', 'Specifications', 'Remarks'] as const;
+const OUT = ['Asset ID', 'Asset name', 'Category', 'Serial number', 'Invoice number', 'Purchase date', 'Purchase price (INR)', 'Location', 'Condition', 'Status', 'Assigned to', 'Specifications', 'Remarks'] as const;
 
 function text(v: unknown): string {
   if (v === null || v === undefined) return '';
   if (v instanceof Date) return toYmd(v) ?? '';
   const s = String(v).replace(/\s+/g, ' ').trim();
   return PLACEHOLDER.test(s) ? '' : s;
+}
+
+const NOT_A_PERSON = /\b(vacant|stock|office|team|department|dept|spare|store|by back|none|nil)\b/i;
+
+/** "ankitaba  jadeja" -> "Ankitaba Jadeja". */
+const titleCase = (s: string) => s.toLowerCase().replace(/(^|[\s.'-])([a-z])/g, (_, a, b) => a + b.toUpperCase());
+
+/**
+ * The people named in the register's "User" cell, in order. Cells like "Vacant", "it stock" or
+ * "Account Department" name no one. "A & B" and "A, B" name two people (an asset can have one assignee).
+ */
+export function peopleIn(raw: unknown): string[] {
+  const t = text(raw);
+  if (!t || NOT_A_PERSON.test(t)) return [];
+  return t.split(/\s*(?:,|&|\+|\/|\band\b)\s*/i).map((p) => titleCase(p.replace(/\s+/g, ' ').trim())).filter((p) => p.length > 1 && !NOT_A_PERSON.test(p));
 }
 
 function amount(v: unknown): number | null {
@@ -148,7 +163,7 @@ export const legacyAssetsAdapter: ImportAdapter = {
     const suffixCount = new Map<string, number>();
     const usedSerials = new Set<string>();
 
-    const n = { noCode: 0, sharedCode: 0, serialMoved: 0, badDate: 0, notWorking: 0, sold: 0, other: 0, qtyMany: 0, priceFromParts: 0 };
+    const n = { assigned: 0, sharedUser: 0, noCode: 0, sharedCode: 0, serialMoved: 0, badDate: 0, notWorking: 0, sold: 0, other: 0, qtyMany: 0, priceFromParts: 0 };
 
     const out: unknown[][] = rows.map((r) => {
       const remarks: string[] = [];
@@ -205,9 +220,13 @@ export const legacyAssetsAdapter: ImportAdapter = {
       const working = text(get(r, col.work)).toLowerCase();
       const notWorking = /^(not|non)[\s-]*working/.test(working);
       const soldTo = text(get(r, col.sale));
+      const people = soldTo ? [] : peopleIn(get(r, col.user));
+      const assignee = people[0] ?? '';
+      if (assignee) { n.assigned += 1; if (people.length > 1) n.sharedUser += 1; }
       let condition = 'Good';
       let status = 'Available';
-      if (notWorking) { condition = 'Poor'; status = 'Damaged'; n.notWorking += 1; }
+      // A Not Working item that someone holds stays with them (condition Poor); an unassigned one is Damaged.
+      if (notWorking) { condition = 'Poor'; if (!assignee) { status = 'Damaged'; n.notWorking += 1; } }
       if (soldTo) { status = 'Retired'; remarks.push(`Sold: ${soldTo}`); n.sold += 1; }
 
       const user = text(get(r, col.user));
@@ -234,6 +253,7 @@ export const legacyAssetsAdapter: ImportAdapter = {
         'Location': text(get(r, col.loc)),
         'Condition': condition,
         'Status': status,
+        'Assigned to': assignee,
         'Specifications': lic ? `Licence key: ${lic}` : '',
         'Remarks': remarks.join(' | '),
       };
@@ -246,7 +266,8 @@ export const legacyAssetsAdapter: ImportAdapter = {
     if (n.sharedCode) notes.push(`${plural(n.sharedCode, 'row repeats', 'rows repeat')} an Asset ID used earlier (parts of the same set). They are saved as SC00002-2, SC00002-3 ... and the original ID is kept in Remarks.`);
     if (n.serialMoved) notes.push(`${plural(n.serialMoved, 'serial number is', 'serial numbers are')} repeated on another row. The first row keeps it; the others have it in Remarks. Entries like "-" and "N/A" are treated as empty.`);
     if (n.badDate) notes.push(`${plural(n.badDate, 'Received Date is', 'Received Dates are')} not a valid date. The text is kept in Remarks.`);
-    if (n.notWorking) notes.push(`${plural(n.notWorking, 'item is', 'items are')} marked Not Working and will be saved as Damaged (condition Poor), so ${n.notWorking === 1 ? 'it is' : 'they are'} not offered for allocation.`);
+    if (n.assigned) notes.push(`${plural(n.assigned, 'asset has', 'assets have')} a person in the User column and will be assigned to that employee (import the employees first).${n.sharedUser ? ` ${n.sharedUser} list more than one person; the first is the assignee and all names stay in Remarks.` : ''}`);
+    if (n.notWorking) notes.push(`${plural(n.notWorking, 'item is', 'items are')} marked Not Working with no user and will be saved as Damaged (condition Poor), so ${n.notWorking === 1 ? 'it is' : 'they are'} not offered for allocation.`);
     if (n.sold) notes.push(`${plural(n.sold, 'item is', 'items are')} marked as sold and will be saved as Retired, with the buyer in Remarks.`);
     if (n.other) notes.push(`${plural(n.other, 'item has', 'items have')} no matching category in the app (telephones, speakers, tools, software ...) and go to "${OTHER}". You can change the category later.`);
     if (n.qtyMany) notes.push(`${plural(n.qtyMany, 'row has', 'rows have')} Qty above 1. Each row is saved as one asset, so add separate rows for each unit.`);
