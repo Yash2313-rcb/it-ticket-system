@@ -8,6 +8,7 @@ import { uploadDocument } from '@/lib/actions/misc';
 import { humanize } from '@/lib/modules/tones';
 import { formatDate } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,11 +43,11 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         actions={isAdmin(me.role) ? <FormDialog title="Upload document" triggerLabel="Upload document" action={uploadDocument} submitLabel="Upload"
           fields={[{ name: 'title', label: 'Title', type: 'text', required: true, full: true }, { name: 'category', label: 'Category', type: 'select', required: true, default: 'other', options: CATS.map((c): [string, string] => [c, humanize(c)]) }, { name: 'file', label: 'File (up to 10 MB)', type: 'file', required: true }, { name: 'description', label: 'Description', type: 'textarea' }]} /> : undefined} />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="Search title, ID, description" className="w-full sm:w-64" />
           <Select name="category" defaultValue={sp.category ?? ''} className="w-full sm:w-56" aria-label="Category"><option value="">All categories</option>{CATS.map((c) => <option key={c} value={c}>{humanize(c)}</option>)}</Select>
           <Button type="submit" variant="outline">Apply filters</Button>{(sp.q || sp.category) && <Link href="/documents" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
         {error ? <EmptyState title="Could not load documents" hint={error.message} /> : !data?.length ? <EmptyState title="No documents found" /> : (
           <Table>
             <THead><tr><TH>ID</TH><TH>Title</TH><TH>Category</TH><TH>Uploaded</TH><TH>File</TH></tr></THead>

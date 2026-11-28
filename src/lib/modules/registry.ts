@@ -149,7 +149,7 @@ const list: ModuleConfig[] = [
     ],
     search: ['request_code', 'item_name'],
     filters: [{ name: 'approval_status', label: 'Any approval status', options: opts(['pending', 'approved', 'rejected', 'converted']) }],
-    order: ['created_at', false], codeField: 'request_code',
+    order: ['created_at', false], codeField: 'request_code', importable: false,
     rowActions: [{ key: 'convert', label: 'Create PO', roles: A, when: ['approval_status', 'approved'], confirm: 'Create a draft purchase order from this request?' }],
     beforeInsert: async (v, ctx) => {
       if (ctx.employeeId) {

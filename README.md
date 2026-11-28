@@ -12,7 +12,7 @@ Later modules appear in the sidebar with a "Phase N" status page until they are 
 2. **Run the database setup** in the Supabase SQL editor, in order:
    1. `supabase/migrations/0001_foundation.sql`
    2. `supabase/migrations/0002_operations.sql` (Phase 2: tasks, tickets, attachments bucket)
-   3. `supabase/migrations/0003_assets_inventory.sql`, `0004_procurement_finance.sql`, `0005_maintenance_infrastructure.sql`, `0006_alerts.sql`
+   3. `supabase/migrations/0003_assets_inventory.sql`, `0004_procurement_finance.sql`, `0005_maintenance_infrastructure.sql`, `0006_alerts.sql`, **`0007_performance.sql`** (indexes and the fast dashboard; required)
    4. `supabase/seed.sql` (optional starter departments), then `supabase/tests/verify.sql` (every row should say ok)
 3. **Create the first user**: Supabase dashboard > Authentication > Users > Add user (tick "Auto Confirm User").
    The first user is automatically made **Super Admin**. Create everyone else from the app (Organization > User Management).
@@ -55,3 +55,11 @@ Later modules appear in the sidebar with a "Phase N" status page until they are 
 2. Use your **Super Admin** account for everything. You can approve your own purchase orders, so there is no waiting on a second person.
 3. Create **Employee** logins only for staff who need to raise tickets (store counter, embroidery supervisor). Link each login to an employee record so they see only their own tickets and assets.
 4. Start with the modules you will use daily: Helpdesk Tickets, Daily Tasks, Assets, Software and Licenses, Vendors and Bills. Leave the others until you need them.
+
+## Import and export (CSV / Excel)
+- **Import** buttons appear on Employees, Departments, Assets, Stock overview, Vendors, Expenses, AMC, Software, Network, Servers, CCTV, IP management and Budgets (administrators; Stock/Assets follow each module's own permissions).
+- Click **Import**, download the Excel or CSV template, fill one row per record, then **Check file** (nothing is saved) and **Import**. Rows with problems are skipped and listed with their sheet row number. Up to 2,000 rows per file.
+- Dropdown-style columns (Department, Vendor, Category...) take the name exactly as shown in the app. Dates can be `2026-04-01` or `01/04/2026` (day first). Leave the ID column blank to auto-generate IDs.
+- Stock items: the **Opening stock** column sets the starting quantity. Later changes go through stock transactions as before.
+- **Export** on the same pages downloads what you are looking at (current search, filters and sort) as Excel or CSV.
+- See `docs/PERFORMANCE.md` for the speed changes and the one Vercel setting worth checking.

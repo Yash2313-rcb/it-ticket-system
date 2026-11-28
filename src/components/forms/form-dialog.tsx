@@ -5,6 +5,7 @@ import { Pencil, Plus } from 'lucide-react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select, Textarea } from '@/components/ui/form';
+import { useToast } from '@/components/ui/toast';
 import type { FormField } from '@/lib/modules/types';
 
 export type DialogState = { ok?: boolean; error?: string; id?: string };
@@ -28,12 +29,14 @@ export function FormDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState<DialogState, FormData>(action, {});
+  const { toast } = useToast();
   useEffect(() => {
     if (state.ok) {
       setOpen(false);
+      toast(submitLabel === 'Save' ? 'Saved.' : `${submitLabel}: done.`);
       if (onDoneHref) window.location.href = onDoneHref.replace('{id}', state.id ?? '');
     }
-  }, [state, onDoneHref]);
+  }, [state, onDoneHref, toast, submitLabel]);
 
   const initial = (f: FormField) => {
     const v = values && f.name in values ? values[f.name] : f.default;

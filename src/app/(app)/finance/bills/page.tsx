@@ -8,6 +8,7 @@ import { saveBill } from '@/lib/actions/procurement';
 import { humanize, valueTone } from '@/lib/modules/tones';
 import { formatDate, formatINR } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -45,7 +46,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
       <PageHeader title="Vendor bills" description="Internal tracking of IT purchase invoices and GST. Not a replacement for statutory accounting or GST filing."
         actions={<FormDialog title="Record vendor bill" triggerLabel="Record bill" onDoneHref="/finance/bills/{id}" action={saveBill} submitLabel="Save bill" fields={billFields(vendors, pos)} />} />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="Invoice or bill number" className="w-full sm:w-52" />
           <Select name="status" defaultValue={sp.status ?? ''} className="w-full sm:w-44" aria-label="Status">
             <option value="">Any status</option><option value="pending">All pending</option><option value="overdue">Overdue</option><option value="unpaid">Unpaid</option><option value="partially_paid">Partially paid</option><option value="paid">Paid</option><option value="cancelled">Cancelled</option>
@@ -54,7 +55,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           <Input name="from" type="date" defaultValue={sp.from} aria-label="From date" className="w-full sm:w-40" /><Input name="to" type="date" defaultValue={sp.to} aria-label="To date" className="w-full sm:w-40" />
           <Button type="submit" variant="outline">Apply filters</Button>
           {filtered && <Link href="/finance/bills" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
         {error ? <EmptyState title="Could not load bills" hint={error.message} /> : !data?.length ? <EmptyState title={filtered ? 'No bills match these filters' : 'No bills recorded yet'} /> : (
           <Table>
             <THead><tr><TH>Bill</TH><TH>Invoice</TH><TH>Vendor</TH><TH>Invoice date</TH><TH>Due</TH><TH>Total</TH><TH>Paid</TH><TH>Outstanding</TH><TH>Status</TH></tr></THead>

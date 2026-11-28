@@ -5,12 +5,14 @@ import { createClient } from '@/lib/supabase/server';
 import { can } from '@/lib/permissions';
 import { formatDate } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input, Select } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/ui/pagination';
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table';
+import { ImportDialog } from '@/components/import/import-dialog';
 import { EmployeeDialog, EmployeeStatusButton } from '@/components/organization/employee-dialog';
 
 const PAGE_SIZE = 20;
@@ -47,10 +49,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <PageHeader
         title="Employees"
         description="Employee directory. Assets, tickets and requests link back to these records."
-        actions={canWrite ? <EmployeeDialog departments={departments ?? []} /> : undefined}
+        actions={canWrite ? <><ImportDialog importKey="employees" title="Employees" /><EmployeeDialog departments={departments ?? []} /></> : undefined}
       />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="Search name, ID, email, designation" className="w-full sm:w-72" />
           <Select name="dept" defaultValue={sp.dept ?? ''} className="w-full sm:w-48">
             <option value="">All departments</option>
@@ -63,7 +65,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           </Select>
           <Button type="submit" variant="outline">Apply filters</Button>
           {filtered && <Link href="/organization/employees" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
 
         {error ? <EmptyState title="Could not load employees" hint={error.message} /> : !data?.length ? (
           <EmptyState

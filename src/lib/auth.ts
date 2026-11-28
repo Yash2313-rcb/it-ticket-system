@@ -12,17 +12,32 @@ export type SessionProfile = {
   employee_id: string | null;
 };
 
+/** User id from the session cookie without a network call. Middleware has already verified the
+ *  session with Supabase (getUser) and refreshed it on this request, and every database query below
+ *  runs with this JWT, so row level security still decides what is returned. */
+async function sessionUserId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    return typeof payload.sub === 'string' ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export const getSessionProfile = cache(async (): Promise<SessionProfile | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const uid = await sessionUserId(supabase);
+  if (!uid) return null;
 
   const { data } = await supabase
     .from('profiles')
     .select('id, email, full_name, role, is_active, employee_id')
-    .eq('id', user.id)
+    .eq('id', uid)
     .single();
 
   return (data as SessionProfile | null) ?? null;

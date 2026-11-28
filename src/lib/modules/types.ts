@@ -59,5 +59,7 @@ export type ModuleConfig = {
   codeField?: string;
   stampCreator?: string;
   rowActions?: RowAction[];
+  /** Set to false to hide the CSV / Excel import button for this module. */
+  importable?: boolean;
   beforeInsert?: (values: Record<string, any>, ctx: { meId: string; employeeId: string | null; supabase: any }) => Promise<void>;
 };

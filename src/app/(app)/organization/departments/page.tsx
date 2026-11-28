@@ -5,6 +5,7 @@ import { PageHeader, EmptyState } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table';
+import { ImportDialog } from '@/components/import/import-dialog';
 import { DepartmentDialog } from '@/components/organization/department-dialog';
 
 export default async function DepartmentsPage() {
@@ -15,7 +16,7 @@ export default async function DepartmentsPage() {
 
   return (
     <>
-      <PageHeader title="Departments" description="Departments used for employees, assets, budgets and reports." actions={canWrite ? <DepartmentDialog /> : undefined} />
+      <PageHeader title="Departments" description="Departments used for employees, assets, budgets and reports." actions={canWrite ? <><ImportDialog importKey="departments" title="Departments" /><DepartmentDialog /></> : undefined} />
       <Card>
         {error ? <EmptyState title="Could not load departments" hint={error.message} /> : !data?.length ? (
           <EmptyState title="No departments yet" hint={canWrite ? 'Add your first department, for example Production or Stores.' : 'An administrator has not added departments yet.'} />

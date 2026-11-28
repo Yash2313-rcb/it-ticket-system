@@ -6,6 +6,7 @@ import { isItStaff } from '@/lib/permissions';
 import { applyTicketFilters, isTicketOverdue, nameMap, PRIORITY, priorityTone, TICKET_STATUS, ticketStatusTone } from '@/lib/ops';
 import { formatDateTime } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -71,7 +72,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         </Card>
       )}
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="Search title or ticket ID" className="w-full sm:w-56" />
           <Select name="status" defaultValue={sp.status ?? ''} className="w-full sm:w-40">
             <option value="">Any status</option>
@@ -97,7 +98,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
           <label className="flex h-9 items-center gap-2 text-sm"><input type="checkbox" name="overdue" value="1" defaultChecked={sp.overdue === '1'} className="h-4 w-4" /> Overdue only</label>
           <Button type="submit" variant="outline">Apply filters</Button>
           {filtered && <Link href="/operations/tickets" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
 
         {error ? <EmptyState title="Could not load tickets" hint={error.message} /> : !data?.length ? (
           <EmptyState title={filtered ? 'No tickets match these filters' : 'No tickets yet'} hint={filtered ? 'Try different filters.' : 'Use Raise ticket to report an IT problem.'} />

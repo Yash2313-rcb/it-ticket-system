@@ -8,6 +8,7 @@ import { postStock } from '@/lib/actions/inventory';
 import { humanize } from '@/lib/modules/tones';
 import { formatDate, formatINR } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,14 +65,14 @@ export async function StockPage({ title, description, basePath, types, sp, dialo
           <FormDialog key={d.type} title={d.label} triggerLabel={d.label} variant={i === 0 ? 'primary' : 'outline'} icon={i === 0 ? 'plus' : 'none'} fields={fieldsFor(d.type)} action={postStock.bind(null, d.type)} submitLabel="Post" />
         ))}</>} />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Select name="item" defaultValue={sp.item ?? ''} className="w-full sm:w-64" aria-label="Item"><option value="">All items</option>{items.map(([v, l]: [string, string]) => <option key={v} value={v}>{l}</option>)}</Select>
           {types.length > 1 && <Select name="type" defaultValue={sp.type ?? ''} className="w-full sm:w-40" aria-label="Type"><option value="">All types</option>{types.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}</Select>}
           <Input name="from" type="date" defaultValue={sp.from} aria-label="From date" className="w-full sm:w-40" />
           <Input name="to" type="date" defaultValue={sp.to} aria-label="To date" className="w-full sm:w-40" />
           <Button type="submit" variant="outline">Apply filters</Button>
           {filtered && <Link href={basePath} className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
         {error ? <EmptyState title="Could not load transactions" hint={error.message} /> : !data?.length ? <EmptyState title="No transactions yet" /> : (
           <Table>
             <THead><tr><TH>Date</TH><TH>Type</TH><TH>Item</TH><TH>Quantity</TH><TH>Balance after</TH><TH>Employee</TH><TH>Department</TH><TH>Purpose / reference</TH></tr></THead>

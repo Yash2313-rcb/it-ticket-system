@@ -6,6 +6,7 @@ import { isAdmin } from '@/lib/permissions';
 import { humanize } from '@/lib/modules/tones';
 import { formatDate, formatINR } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/form';
@@ -29,10 +30,10 @@ export default async function PaymentsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title="Payments" description="All vendor payments. Record a payment from the bill it belongs to." />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="from" type="date" defaultValue={sp.from} aria-label="From date" className="w-full sm:w-40" /><Input name="to" type="date" defaultValue={sp.to} aria-label="To date" className="w-full sm:w-40" />
           <Button type="submit" variant="outline">Apply</Button>{(sp.from || sp.to) && <Link href="/finance/payments" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
         {error ? <EmptyState title="Could not load payments" hint={error.message} /> : !data?.length ? <EmptyState title="No payments recorded" /> : (
           <Table>
             <THead><tr><TH>Date</TH><TH>Vendor</TH><TH>Bill</TH><TH>Invoice</TH><TH>Amount</TH><TH>Mode</TH><TH>Reference</TH></tr></THead>

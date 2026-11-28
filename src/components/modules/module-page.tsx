@@ -9,18 +9,22 @@ import { formatDate, formatINR } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import { buttonClass } from '@/components/ui/button';
 import { Input, Select } from '@/components/ui/form';
 import { Pagination } from '@/components/ui/pagination';
-import { Table, THead, TBody, TR, TH, TD } from '@/components/ui/table';
+import { Table, THead, TBody, TR, TH, TD, SortTH } from '@/components/ui/table';
+import { FilterForm } from '@/components/forms/filter-form';
+import { ImportDialog } from '@/components/import/import-dialog';
+import { applyModuleQuery, getPath, sortableColumns } from '@/lib/modules/query';
+import { getImportSpec } from '@/lib/import/spec';
 import { FormDialog } from '@/components/forms/form-dialog';
 import { RowActionButton } from './row-actions';
 import { saveRecord, runRowAction } from '@/lib/actions/modules';
 
 const PAGE_SIZE = 20;
 
-const get = (row: any, path: string) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), row);
-const clean = (s: string) => s.replace(/[%,()]/g, ' ').trim();
+const get = getPath;
 
 async function loadOptions(supabase: any, ref: NonNullable<import('@/lib/modules/types').ModField['ref']>): Promise<[string, string][]> {
   const cols = ref.label.split(',');
@@ -68,13 +72,8 @@ export async function ModulePage({ configKey, basePath, sp, extra }: { configKey
   const supabase = await createClient();
   const page = Math.max(1, Number(sp.page) || 1);
 
-  let q: any = supabase.from(cfg.table).select(cfg.select, { count: 'exact' }).order(cfg.order[0], { ascending: cfg.order[1] }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-  if (cfg.base) q = cfg.base.op === 'eq' ? q.eq(cfg.base.col, cfg.base.value) : cfg.base.op === 'in' ? q.in(cfg.base.col, cfg.base.value as string[]) : q.not(cfg.base.col, 'in', `(${(cfg.base.value as string[]).join(',')})`);
-  if (sp.q && cfg.search.length) {
-    const t = clean(sp.q);
-    if (t) q = q.or(cfg.search.map((c) => `${c}.ilike.%${t}%`).join(','));
-  }
-  for (const f of cfg.filters ?? []) if (sp[f.name]) q = q.eq(f.name, sp[f.name]);
+  let q: any = supabase.from(cfg.table).select(cfg.select, { count: 'exact' }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+  q = applyModuleQuery(q, cfg, sp);
 
   const refFields = cfg.fields.filter((f) => f.ref);
   const [result, ...refOptions] = await Promise.all([q, ...refFields.map((f) => loadOptions(supabase, f.ref!))]);
@@ -96,6 +95,19 @@ export async function ModulePage({ configKey, basePath, sp, extra }: { configKey
   }));
   const filtered = !!(sp.q || filters.some((f) => sp[f.name]));
   const visibleActions = (row: any) => (cfg.rowActions ?? []).filter((a) => a.roles.includes(me.role) && (!a.when || row[a.when[0]] === a.when[1]));
+  const importSpec = getImportSpec(cfg.key);
+  const canImport = !!importSpec && importSpec.roles.includes(me.role);
+  const sortable = new Set(sortableColumns(cfg));
+  const dir = sp.dir === 'desc' ? 'desc' : 'asc';
+  const baseParams: Record<string, string | undefined> = { q: sp.q, ...Object.fromEntries(filters.map((f) => [f.name, sp[f.name]])) };
+  const sortHref = (path: string) => {
+    const p = new URLSearchParams();
+    Object.entries(baseParams).forEach(([k, v]) => v && p.set(k, v));
+    p.set('sort', path);
+    p.set('dir', sp.sort === path && dir === 'asc' ? 'desc' : 'asc');
+    return `${basePath}?${p.toString()}`;
+  };
+  const exportQs = new URLSearchParams(Object.entries({ key: cfg.key, ...baseParams, sort: sp.sort, dir: sp.dir }).filter(([, v]) => v) as [string, string][]).toString();
   const showActionsCol = canEdit || (cfg.rowActions ?? []).some((a) => a.roles.includes(me.role));
 
   return (
@@ -103,11 +115,17 @@ export async function ModulePage({ configKey, basePath, sp, extra }: { configKey
       <PageHeader
         title={cfg.title}
         description={cfg.description}
-        actions={canCreate ? <FormDialog title={`Add ${cfg.singular}`} triggerLabel={`Add ${cfg.singular}`} fields={createFields} action={saveRecord.bind(null, cfg.key)} /> : undefined}
+        actions={
+          <>
+            <a href={`/data/export?${exportQs}`} className={buttonClass('outline')}><Download className="h-4 w-4" /> Export</a>
+            {canImport && <ImportDialog importKey={cfg.key} title={cfg.title} />}
+            {canCreate && <FormDialog title={`Add ${cfg.singular}`} triggerLabel={`Add ${cfg.singular}`} fields={createFields} action={saveRecord.bind(null, cfg.key)} />}
+          </>
+        }
       />
       {extra}
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search" hidden={{ sort: sp.sort, dir: sp.dir }}>
           {cfg.search.length > 0 && <Input name="q" defaultValue={sp.q} placeholder={`Search ${cfg.title.toLowerCase()}`} className="w-full sm:w-64" />}
           {filters.map((f) => (
             <Select key={f.name} name={f.name} defaultValue={sp[f.name] ?? ''} className="w-full sm:w-48" aria-label={f.label}>
@@ -115,14 +133,13 @@ export async function ModulePage({ configKey, basePath, sp, extra }: { configKey
               {f.options.map(([val, label]) => <option key={val} value={val}>{label}</option>)}
             </Select>
           ))}
-          {(cfg.search.length > 0 || filters.length > 0) && <Button type="submit" variant="outline">Apply filters</Button>}
-          {filtered && <Link href={basePath} className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+          {filtered && <Link href={basePath} className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear filters</Link>}
+        </FilterForm>
         {error ? <EmptyState title={`Could not load ${cfg.title.toLowerCase()}`} hint={error.message.includes('does not exist') ? 'The database migration for this module has not been run yet.' : error.message} /> : !data?.length ? (
           <EmptyState title={filtered ? 'Nothing matches these filters' : `No ${cfg.title.toLowerCase()} yet`} hint={filtered ? 'Try different filters.' : canCreate ? `Use Add ${cfg.singular} to create the first one.` : undefined} />
         ) : (
           <Table>
-            <THead><tr>{cfg.cols.map((c) => <TH key={c.label}>{c.label}</TH>)}{showActionsCol && <TH />}</tr></THead>
+            <THead><tr>{cfg.cols.map((c) => sortable.has(c.path) ? <SortTH key={c.label} label={c.label} href={sortHref(c.path)} active={(sp.sort ?? '') === c.path} dir={dir} /> : <TH key={c.label}>{c.label}</TH>)}{showActionsCol && <TH />}</tr></THead>
             <TBody>
               {data.map((row: any) => (
                 <TR key={row.id}>
@@ -144,7 +161,7 @@ export async function ModulePage({ configKey, basePath, sp, extra }: { configKey
             </TBody>
           </Table>
         )}
-        <Pagination page={page} pageSize={PAGE_SIZE} total={count ?? 0} basePath={basePath} params={{ q: sp.q, ...Object.fromEntries(filters.map((f) => [f.name, sp[f.name]])) }} />
+        <Pagination page={page} pageSize={PAGE_SIZE} total={count ?? 0} basePath={basePath} params={{ ...baseParams, sort: sp.sort, dir: sp.dir }} />
       </Card>
     </>
   );

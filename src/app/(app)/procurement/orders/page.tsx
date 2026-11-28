@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES } from '@/lib/modules/registry';
 import { humanize, valueTone } from '@/lib/modules/tones';
 import { formatDate, formatINR } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,13 +44,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
             { name: 'shipping_charges', label: 'Shipping charges (INR)', type: 'money', default: 0 }, { name: 'payment_terms', label: 'Payment terms', type: 'text' }, { name: 'notes', label: 'Notes', type: 'textarea' },
           ]} />} />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="PO number" className="w-full sm:w-48" />
           <Select name="status" defaultValue={sp.status ?? ''} className="w-full sm:w-48" aria-label="Status"><option value="">Any status</option>{PO_STATUSES.map((s) => <option key={s} value={s}>{humanize(s)}</option>)}</Select>
           <Select name="vendor" defaultValue={sp.vendor ?? ''} className="w-full sm:w-56" aria-label="Vendor"><option value="">All vendors</option>{vendors.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
           <Button type="submit" variant="outline">Apply filters</Button>
           {(sp.q || sp.status || sp.vendor) && <Link href="/procurement/orders" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
         {error ? <EmptyState title="Could not load purchase orders" hint={error.message} /> : !data?.length ? <EmptyState title="No purchase orders yet" /> : (
           <Table>
             <THead><tr><TH>PO number</TH><TH>Date</TH><TH>Vendor</TH><TH>Department</TH><TH>Total</TH><TH>Delivery</TH><TH>Status</TH></tr></THead>

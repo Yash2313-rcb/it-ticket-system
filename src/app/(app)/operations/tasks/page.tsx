@@ -7,6 +7,7 @@ import { isAdmin, isItStaff } from '@/lib/permissions';
 import { applyTaskFilters, formatMinutes, nameMap, PRIORITY, priorityTone, TASK_STATUS, taskStatusTone, todayYmd } from '@/lib/ops';
 import { formatDate } from '@/lib/utils';
 import { PageHeader, EmptyState } from '@/components/ui/page-header';
+import { FilterForm } from '@/components/forms/filter-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -61,7 +62,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
         }
       />
       <Card>
-        <form className="flex flex-wrap gap-2 border-b p-4" role="search">
+        <FilterForm className="flex flex-wrap gap-2 border-b p-4" role="search">
           <Input name="q" defaultValue={sp.q} placeholder="Search title or task ID" className="w-full sm:w-56" />
           <Select name="status" defaultValue={sp.status ?? ''} className="w-full sm:w-36">
             <option value="">Any status</option>
@@ -85,7 +86,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
           <Input name="to" type="date" defaultValue={sp.to} aria-label="To date" className="w-full sm:w-40" />
           <Button type="submit" variant="outline">Apply filters</Button>
           {filtered && <Link href="/operations/tasks" className="inline-flex h-9 items-center px-2 text-sm text-primary hover:underline">Clear</Link>}
-        </form>
+        </FilterForm>
 
         {error ? <EmptyState title="Could not load tasks" hint={error.message} /> : !data?.length ? (
           <EmptyState title={filtered ? 'No tasks match these filters' : 'No tasks recorded yet'} hint={filtered ? 'Try different filters.' : 'Use Add task to record the first piece of IT work.'} />
